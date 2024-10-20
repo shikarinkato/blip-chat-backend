@@ -12,6 +12,7 @@ import UserSchema from "./models/UserSchema.js";
 import cookieParser from "cookie-parser";
 import ChatSchema from "./models/ChatsSchema.js";
 import ErrorHandler from "./middlewares/ErrorHandler.js";
+import { log } from "console";
 
 const app = express();
 
@@ -35,7 +36,7 @@ const offlineMessages = {};
 
 io.on("connection", async (socket) => {
   let token = socket.handshake.query.token;
-
+  let updateUsersTimer;
   try {
     let user = await extractUser(token);
 
@@ -59,7 +60,25 @@ io.on("connection", async (socket) => {
     let room = 0;
 
     activeUsers.set(user.id, socket.id);
-    io.emit("update-active-users", Array.from(activeUsers.keys()));
+    socket.on("call-update-users", () => {
+      //setting a timer so the update active users emited after time so it can
+      updateUsersTimer = setTimeout(() => {
+        //emit event globally to inform all users to online users
+        io.emit(
+          "update-active-users",
+          Array.from(activeUsers.keys()),
+          (err, ack) => {
+            // if (err) {
+            //   console.log("Ack is not got Heared");
+            //   // console.log(err);
+            // } else {
+            //   console.log("Ack is heared");
+            //   console.log(ack);
+            // }
+          }
+        );
+      }, 1000);
+    });
 
     socket.on("update-user-heared", ({ message }) => {
       console.log(message);
@@ -91,6 +110,8 @@ io.on("connection", async (socket) => {
 
     socket.on("send-message", (roomID, msgObj) => {
       let another = msgObj.receiver_id;
+
+      console.log(roomID);
 
       let rooms = io.sockets.adapter.rooms;
       let anthrSocket = activeUsers.get(another);
@@ -188,8 +209,6 @@ io.on("connection", async (socket) => {
       socket.leave(room);
       io.to(room).disconnectSockets(true);
     });
-
-    console.log(activeUsers);
   } catch (error) {
     console.error("Error extracting user:", error.message);
 
@@ -217,3 +236,12 @@ app.get("/", (req, res) => {
 app.use("/api/v2/user", UserRouter);
 app.use("/api/v2/chats", ChatsRouter);
 app.use("/api/v2/messages", MessagesRouter);
+app.get("/api/v2/allUsers", async (req, res) => {
+  try {
+    let users = await UserSchema.find();
+    // console.log(users);
+    res.status(200).json({ users });
+  } catch (error) {
+    console.log(error);
+  }
+});

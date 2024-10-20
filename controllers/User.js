@@ -7,7 +7,7 @@ import ChatSchema from "../models/ChatsSchema.js";
 import _ from "lodash";
 
 export const registerUser = async (req, res) => {
-  const { fullName, email, password, userName, mobile_number, pic } = req.body;
+  let { fullName, email, password, userName, mobile_number, pic } = req.body;
 
   try {
     if (!fullName || !email || !password || !userName) {
@@ -16,13 +16,25 @@ export const registerUser = async (req, res) => {
         message: "All fields are required.",
       });
     }
-    const existingUser = await UserSchema.findOne({
-      $or: [
-        { $and: [{ email }, { userName }, { mobile_number }] },
-        { userName },
-        { mobile_number },
-      ],
-    });
+
+    let query;
+
+    if (mobile_number && typeof mobile_number === "number") {
+      query = {
+        $or: [
+          { $and: [{ email }, { userName }, { mobile_number }] },
+          { userName },
+          { mobile_number },
+        ],
+      };
+    } else {
+      query = {
+        $or: [{ $and: [{ email }, { userName }] }, { userName }],
+      };
+    }
+
+    const existingUser = await UserSchema.findOne(query);
+
 
     if (existingUser) {
       return ErrorHandler(res, {
@@ -33,6 +45,10 @@ export const registerUser = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    if (!pic || pic === "") {
+      pic =
+        "http://res.cloudinary.com/shikarinkato/image/upload/v1728902919/kopcoza26nv3rlued1mw.webp";
+    }
 
     const newUser = await UserSchema.create({
       fullName,
@@ -51,6 +67,7 @@ export const registerUser = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    console.log(error);
     ErrorHandler(res, error);
   }
 };
@@ -344,9 +361,10 @@ export const getProfile = (req, res) => {
 export const getFriendsProfile = async (req, res) => {
   let { friends } = req.body;
   let user = req.user;
+
   try {
     friends = friends
-      .filter((fr) => fr !== user._id)
+      .filter((fr) => fr !== user._id && mongoose.Types.ObjectId.isValid(fr))
       .map((fr) => new mongoose.Types.ObjectId(fr));
 
     if (!friends || friends.length < 1) {
@@ -431,5 +449,3 @@ export const getFriendsProfile = async (req, res) => {
     return ErrorHandler(res, error);
   }
 };
-
-

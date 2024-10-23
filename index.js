@@ -123,7 +123,7 @@ io.on("connection", async (socket) => {
 
       console.log(roomID);
 
-      console.log(msgObj.message);
+      // console.log(msgObj.message);
 
       let rooms = io.sockets.adapter.rooms;
       let anthrSocket = activeUsers.get(another);

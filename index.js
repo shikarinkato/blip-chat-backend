@@ -24,6 +24,7 @@ app.use(cookieParser());
 export const httpServer = createServer(app);
 
 let activeUsers = new Map();
+let disconnectMap = new Map();
 const io = new Server(httpServer, {
   cors: {
     origin: `${process.env.FRONTEND_URL}`,
@@ -44,6 +45,11 @@ io.on("connection", async (socket) => {
       socket.emit("error", { code: 403, message: "Token is invalid" });
       socket.disconnect();
       return;
+    }
+
+    if (disconnectMap.has(user.id)) {
+      clearTimeout(disconnectMap.get(user._id));
+      disconnectMap.delete(user.id);
     }
 
     console.log("User connected:", user.id);
@@ -86,9 +92,14 @@ io.on("connection", async (socket) => {
 
     socket.on("initiate-chat", (friendRoom, userRoom, friendID) => {
       let rooms = io.sockets.adapter.rooms;
-      const myRoom = rooms.get(friendRoom);
+      const frRoom = rooms.get(friendRoom);
+      const myRoom = rooms.get(userRoom);
 
-      if (myRoom && myRoom.size > 0) {
+      console.log("Friend Room: ", frRoom);
+      console.log("Friend Room ID: ", friendRoom);
+      console.log("User Room: ", myRoom);
+
+      if (frRoom && frRoom.size > 0) {
         socket.join(friendRoom);
         socket.emit("room-already", friendRoom);
       } else {
@@ -113,6 +124,8 @@ io.on("connection", async (socket) => {
 
       console.log(roomID);
 
+      console.log(msgObj.message);
+
       let rooms = io.sockets.adapter.rooms;
       let anthrSocket = activeUsers.get(another);
 
@@ -122,6 +135,8 @@ io.on("connection", async (socket) => {
 
       console.log(myRoom);
       console.log("My room id: ", roomID);
+
+      console.log("Users: ", activeUsers.keys());
 
       if (myRoom) {
         isBoth = myRoom.has(anthrSocket);
@@ -202,12 +217,23 @@ io.on("connection", async (socket) => {
       io.emit("update-active-users", Array.from(activeUsers.keys()));
     });
 
+    console.log("Rooms: ", io.sockets.adapter.rooms);
+
     socket.on("disconnect", () => {
       activeUsers.delete(user.id);
-      io.emit("update-active-users", Array.from(activeUsers.keys()));
+      if (!disconnectMap.has(user.id)) {
+        disconnectMap.set(
+          user.id,
+          setTimeout(() => {
+            io.emit("update-active-users", Array.from(activeUsers.keys()));
+            socket.leave(room);
+            disconnectMap.delete(user.id);
+          }, 5000)
+        );
+      }
+
       console.log("User disconnected:", user.id);
-      socket.leave(room);
-      io.to(room).disconnectSockets(true);
+      // io.to(room).disconnectSockets(true);
     });
   } catch (error) {
     console.error("Error extracting user:", error.message);

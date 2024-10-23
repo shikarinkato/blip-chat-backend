@@ -37,7 +37,6 @@ const offlineMessages = {};
 
 io.on("connection", async (socket) => {
   let token = socket.handshake.query.token;
-  let updateUsersTimer;
   try {
     let user = await extractUser(token);
 
@@ -95,9 +94,9 @@ io.on("connection", async (socket) => {
       const frRoom = rooms.get(friendRoom);
       const myRoom = rooms.get(userRoom);
 
-      console.log("Friend Room: ", frRoom);
-      console.log("Friend Room ID: ", friendRoom);
-      console.log("User Room: ", myRoom);
+      // console.log("Friend Room: ", frRoom);
+      // console.log("Friend Room ID: ", friendRoom);
+      // console.log("User Room: ", myRoom);
 
       if (frRoom && frRoom.size > 0) {
         socket.join(friendRoom);

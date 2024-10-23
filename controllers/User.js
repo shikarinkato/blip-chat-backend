@@ -35,7 +35,6 @@ export const registerUser = async (req, res) => {
 
     const existingUser = await UserSchema.findOne(query);
 
-
     if (existingUser) {
       return ErrorHandler(res, {
         code: 400,
@@ -362,6 +361,7 @@ export const getFriendsProfile = async (req, res) => {
   let { friends } = req.body;
   let user = req.user;
 
+
   try {
     friends = friends
       .filter((fr) => fr !== user._id && mongoose.Types.ObjectId.isValid(fr))
@@ -430,6 +430,7 @@ export const getFriendsProfile = async (req, res) => {
         },
       },
     ]);
+
 
     chats = chats.map((chat) => {
       let res = fetchedFriends.find((fr) => {

@@ -67,7 +67,7 @@ io.on("connection", async (socket) => {
     activeUsers.set(user.id, socket.id);
     socket.on("call-update-users", () => {
       //setting a timer so the update active users emited after time so it can
-      updateUsersTimer = setTimeout(() => {
+      let updateUsersTimer = setTimeout(() => {
         //emit event globally to inform all users to online users
         io.emit(
           "update-active-users",
